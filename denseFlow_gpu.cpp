@@ -75,17 +75,13 @@ int main(int argc, char** argv){
 	int new_width;
 	Mat image, prev_image, prev_grey, grey, frame, flow_x, flow_y;
 	GpuMat frame_0, frame_1;
-	//GpuMat flow_u, flow_v;
 	GpuMat d_flow;
 
 	setDevice(device_id);
 
-	//FarnebackOpticalFlow alg_farn;
-	//OpticalFlowDual_TVL1_GPU alg_tvl1;
-	//BroxOpticalFlow alg_brox(0.197f, 50.0f, 0.8f, 10, 77, 10);
-    Ptr<cuda::BroxOpticalFlow> alg_brox = cuda::BroxOpticalFlow::create(0.197f, 50.0f, 0.8f, 10, 77, 10);
-    Ptr<cuda::FarnebackOpticalFlow> alg_farn = cuda::FarnebackOpticalFlow::create();
-    Ptr<cuda::OpticalFlowDual_TVL1> alg_tvl1 = cuda::OpticalFlowDual_TVL1::create();
+    	Ptr<cuda::BroxOpticalFlow> alg_brox = cuda::BroxOpticalFlow::create(0.197f, 50.0f, 0.8f, 10, 77, 10);
+    	Ptr<cuda::FarnebackOpticalFlow> alg_farn = cuda::FarnebackOpticalFlow::create();
+    	Ptr<cuda::OpticalFlowDual_TVL1> alg_tvl1 = cuda::OpticalFlowDual_TVL1::create();
 
 
 	while(true) {
@@ -138,14 +134,10 @@ int main(int argc, char** argv){
 		}
 
  		GpuMat planes[2];
-        cuda::split(d_flow, planes);
+        	cuda::split(d_flow, planes);
 
 		Mat flow_x(planes[0]);
-        Mat flow_y(planes[1]);
-
-		//flow_u.download(flow_x);
-		//flow_v.download(flow_y);
-
+        	Mat flow_y(planes[1]);
 
 		// Output optical flow
 		Mat imgX(flow_x.size(),CV_8UC1);
