@@ -37,12 +37,25 @@ static void drawOptFlowMap(const Mat& flow, Mat& cflowmap, int step,double, cons
         }
 }
 
+static void mergeOutFlowImages(Mat &img_x, Mat &img_y, Mat &dst){ 
+	Mat img_z(img_x.rows, img_x.cols, CV_8U, Scalar(128));
+	vector<Mat> array_to_merge;
+
+	array_to_merge.push_back(img_z); //B
+    array_to_merge.push_back(img_y); //G
+    array_to_merge.push_back(img_x); //R
+
+    merge(array_to_merge, dst);
+}
+
+
 int main(int argc, char** argv){
 	// IO operation
 	const String keys =
 		"{ f  | vidFile    | ex.avi  | filename of video }"
 		"{ x  | xFlowFile  | x       | filename prefix of flow x component }"
-		"{ y  | yFlowFile  | y       | filename prefix of flow x component }"
+		"{ y  | yFlowFile  | y       | filename prefix of flow y component }"
+		"{ m  | mFlowFile  | m       | filename prefix of merged flow component }"
 		"{ i  | imgFile    | i       | filename prefix of image }"
 		"{ b  | bound      | 20      | specify the maximum (px) of optical flow }"
 		"{ t  | type       | 1       | specify the optical flow algorithm }"
@@ -56,13 +69,14 @@ int main(int argc, char** argv){
 	String vidFile = cmd.get<String>("f");
 	String xFlowFile = cmd.get<String>("x");
 	String yFlowFile = cmd.get<String>("y");
+	String mFlowFile = cmd.get<String>("m");
 	String imgFile = cmd.get<String>("i");
 	int bound = cmd.get<int>("b");
-        int type  = cmd.get<int>("t");
-        int device_id = cmd.get<int>("d");
-        int step = cmd.get<int>("s");
-        int height = cmd.get<int>("h");
-        int width = cmd.get<int>("w");
+    int type  = cmd.get<int>("t");
+    int device_id = cmd.get<int>("d");
+    int step = cmd.get<int>("s");
+    int height = cmd.get<int>("h");
+    int width = cmd.get<int>("w");
 
 
 	VideoCapture capture(vidFile);
@@ -79,9 +93,9 @@ int main(int argc, char** argv){
 
 	setDevice(device_id);
 
-    	Ptr<cuda::BroxOpticalFlow> alg_brox = cuda::BroxOpticalFlow::create(0.197f, 50.0f, 0.8f, 10, 77, 10);
-    	Ptr<cuda::FarnebackOpticalFlow> alg_farn = cuda::FarnebackOpticalFlow::create();
-    	Ptr<cuda::OpticalFlowDual_TVL1> alg_tvl1 = cuda::OpticalFlowDual_TVL1::create();
+    Ptr<cuda::BroxOpticalFlow> alg_brox = cuda::BroxOpticalFlow::create(0.197f, 50.0f, 0.8f, 10, 77, 10);
+    Ptr<cuda::FarnebackOpticalFlow> alg_farn = cuda::FarnebackOpticalFlow::create();
+    Ptr<cuda::OpticalFlowDual_TVL1> alg_tvl1 = cuda::OpticalFlowDual_TVL1::create();
 
 
 	while(true) {
@@ -117,7 +131,7 @@ int main(int argc, char** argv){
 		frame_1.upload(grey);
 
 
-                // GPU optical flow
+        // GPU optical flow
 		switch(type){
 		case 0:
 			alg_farn->calc(frame_0, frame_1, d_flow);
@@ -134,27 +148,34 @@ int main(int argc, char** argv){
 		}
 
  		GpuMat planes[2];
-        	cuda::split(d_flow, planes);
+        cuda::split(d_flow, planes);
 
 		Mat flow_x(planes[0]);
-        	Mat flow_y(planes[1]);
+        Mat flow_y(planes[1]);
 
 		// Output optical flow
 		Mat imgX(flow_x.size(),CV_8UC1);
 		Mat imgY(flow_y.size(),CV_8UC1);
 		convertFlowToImage(flow_x,flow_y, imgX, imgY, -bound, bound);
+
 		char tmp[20];
 		sprintf(tmp,"_%06d.jpg",int(frame_num));
 
-		Mat imgX_, imgY_, image_;
-                height = (height > 0)? height : imgX.rows;
-                width  = (width  > 0)? width  : imgX.cols;
+		Mat imgM;
+		mergeOutFlowImages(imgX, imgY, imgM);
+
+		Mat imgX_, imgY_, imgM_, image_;
+        height = (height > 0)? height : imgX.rows;
+        width  = (width  > 0)? width  : imgX.cols;
+		
 		resize(imgX,imgX_,cv::Size(width,height));
-		resize(imgY,imgY_,cv::Size(width,height));
+		resize(imgX,imgX_,cv::Size(width,height));
+		resize(imgM,imgM_,cv::Size(width,height));
 		resize(image,image_,cv::Size(width,height));
 
 		imwrite(xFlowFile + tmp,imgX_);
 		imwrite(yFlowFile + tmp,imgY_);
+		imwrite(mFlowFile + tmp,imgM_);
 		imwrite(imgFile + tmp, image_);
 
 		std::swap(prev_grey, grey);

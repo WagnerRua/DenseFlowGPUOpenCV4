@@ -10,6 +10,7 @@ Option | Name | Default | Note
 f  | vidFile    | ex.avi  | filename of video
 x  | xFlowFile  | x       | filename prefix of flow x component
 y  | yFlowFile  | y       | filename prefix of flow x component
+m  | mFlowFile  | m       | filename prefix of merged flow images
 i  | imgFile    | i       | filename prefix of image
 b  | bound      | 20      | specify the maximum (px) of optical flow
 t  | type       | 1       | specify the optical flow algorithm
